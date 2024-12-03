@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WorkWise Dashboard</title>
+    <!-- Link to static CSS file -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Welcome to WorkWise Dashboard</h1>
+        <nav>
+            <ul>
+                <li><a href="/">Dashboard</a></li>
+                <li><a href="/tasks">Tasks</a></li>
+                <li><a href="/reports">Reports</a></li>
+                <li><a href="/settings">Settings</a></li>
+            </ul>
+        </nav>
+    </header>
+    <section>
+        <h2>Task Progress</h2>
+        <div class="task-summary">
+            <!-- Task progress or data goes here -->
+        </div>
+    </section>
+    <footer>
+        <p>&copy; 2024 WorkWise</p>
+    </footer>
+</body>
+</html>
