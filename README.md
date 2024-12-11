@@ -12,14 +12,16 @@ WorkWise is a comprehensive productivity app designed to help users efficiently 
 ## Setup Instructions
 Follow the installation guide provided below.
 
-#compile and test project
+
+## compile and test project
 #Navigate to project folder where app.py is located
-cd project-folder
+- cd project-folder
 
 #run the Flas app
-python app.py
+- python app.py
 
 #app run successfully web url will be displayed
-Running on http://127.0.0.1:50000/
+- Running on http://127.0.0.1:50000/
+
 
 
