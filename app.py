@@ -15,14 +15,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize extensions
 db = SQLAlchemy(app)
-
-# Ensure instance folder exists
-os.makedirs(os.path.join(basedir, 'instance'), exist_ok=True)
-
-# Create all tables
-with app.app_context():
-    db.create_all()
-
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
@@ -49,7 +41,7 @@ class Task(db.Model):
 # Load user callback
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 # Routes
 @app.route('/')
@@ -57,12 +49,27 @@ def load_user(user_id):
 def dashboard():
     filter_status = request.args.get('filter', 'All')
 
-    if current_user.role == 'admin':  # Admin sees all tasks
-        tasks = Task.query.all() if filter_status == 'All' else Task.query.filter_by(status=filter_status).all()
-    else:  # Other users see only their tasks
-        tasks = Task.query.filter_by(assigned_to=current_user.id) if filter_status == 'All' else Task.query.filter_by(status=filter_status, assigned_to=current_user.id).all()
+    if current_user.role in ['admin', 'dev']:
+        if filter_status == 'All':
+            tasks = Task.query.all()
+        elif filter_status == 'Completed':
+            tasks = Task.query.filter(Task.status == 'Completed').all()
+        elif filter_status == 'Pending':
+            tasks = Task.query.filter(Task.status == 'Pending').all()
+        else:
+            tasks = []
+    else:
+        if filter_status == 'All':
+            tasks = Task.query.filter_by(assigned_to=current_user.id).all()
+        elif filter_status == 'Completed':
+            tasks = Task.query.filter_by(status='Completed', assigned_to=current_user.id).all()
+        elif filter_status == 'Pending':
+            tasks = Task.query.filter_by(status='Pending', assigned_to=current_user.id).all()
+        else:
+            tasks = []
 
-    users = User.query.all() if current_user.role == 'admin' else []  # Only admin sees users for task assignment
+    users = User.query.all() if current_user.role in ['admin', 'dev'] else []
+    app.logger.info(f"Tasks for {current_user.username} with filter '{filter_status}': {tasks}")
     return render_template('dashboard.html', tasks=tasks, filter_status=filter_status, users=users)
 
 @app.route('/add', methods=['POST'])
@@ -76,13 +83,10 @@ def add_task():
     assigned_to = request.form.get('assigned_to')
 
     if task_name:
-        assigned_user = assigned_to if current_user.role == 'admin' else current_user.id
-        new_task = Task(name=task_name, assigned_to=assigned_user)
+        new_task = Task(name=task_name, assigned_to=assigned_to if current_user.role == 'admin' else current_user.id)
         db.session.add(new_task)
         db.session.commit()
         flash('Task added successfully!', 'success')
-    else:
-        flash('Task name cannot be empty.', 'danger')
 
     return redirect(url_for('dashboard'))
 
@@ -90,7 +94,7 @@ def add_task():
 @login_required
 def edit_task(task_id):
     task = Task.query.get_or_404(task_id)
-    if current_user.role != 'admin' and task.assigned_to != current_user.id:
+    if current_user.role not in ['admin', 'dev'] or (task.assigned_to != current_user.id and current_user.role != 'admin'):
         flash('Permission denied.', 'danger')
         return redirect(url_for('dashboard'))
 
@@ -99,19 +103,20 @@ def edit_task(task_id):
         db.session.commit()
         flash('Task updated successfully!', 'success')
         return redirect(url_for('dashboard'))
+
     return render_template('edit_task.html', task=task)
 
 @app.route('/update_status/<int:task_id>', methods=['POST'])
 @login_required
 def update_status(task_id):
     task = Task.query.get_or_404(task_id)
-    if current_user.role != 'admin' and task.assigned_to != current_user.id:
+    if current_user.role not in ['admin', 'dev'] or (task.assigned_to != current_user.id and current_user.role != 'admin'):
         flash('Permission denied.', 'danger')
         return redirect(url_for('dashboard'))
 
-    task.status = 'Complete' if task.status == 'Pending' else 'Pending'
+    task.status = 'Completed' if task.status == 'Pending' else 'Pending'
     db.session.commit()
-    flash('Task status updated!', 'success')
+    flash('Task status updated successfully!', 'success')
     return redirect(url_for('dashboard'))
 
 @app.route('/delete/<int:task_id>', methods=['POST'])
@@ -144,6 +149,7 @@ def register():
         db.session.commit()
         flash('Registration successful!', 'success')
         return redirect(url_for('login'))
+
     return render_template('register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -158,6 +164,7 @@ def login():
             flash('Login successful!', 'success')
             return redirect(url_for('dashboard'))
         flash('Invalid username or password.', 'danger')
+
     return render_template('login.html')
 
 @app.route('/logout')
@@ -168,4 +175,6 @@ def logout():
     return redirect(url_for('login'))
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
     app.run(debug=True)
