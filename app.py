@@ -4,8 +4,10 @@ matplotlib.use('Agg')  # Use non-interactive backend
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from flask_migrate import Migrate
+from flask_mail import Mail, Message
+from flask_apscheduler import APScheduler
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_migrate import Migrate  # Import Flask-Migrate
 import os
 import datetime
 import pandas as pd
@@ -22,16 +24,29 @@ app.config['SECRET_KEY'] = 'password12345'
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(basedir, 'instance', 'tasks.db')}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Email Configuration
+app.config['MAIL_SERVER'] = 'smtp.office365.com'  # Outlook SMTP server
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'ayunotesting@outlook.com'
+app.config['MAIL_PASSWORD'] = 'Password@12345'
+app.config['MAIL_DEFAULT_SENDER'] = 'ayunotesting@outlook.com'
+
 # Initialize extensions
 db = SQLAlchemy(app)
-migrate = Migrate(app, db)  # Initialize Flask-Migrate
+migrate = Migrate(app, db)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+mail = Mail(app)
+scheduler = APScheduler()
+scheduler.init_app(app)
+scheduler.start()
 
 # Models
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
     role = db.Column(db.String(20), nullable=False, default='viewer')  # Roles: admin, dev, viewer
 
@@ -54,6 +69,22 @@ class Task(db.Model):
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
+
+# Scheduled Task
+@scheduler.task('interval', id='check_overdue_tasks', minutes=60)
+def check_overdue_tasks():
+    overdue_tasks = Task.query.filter(
+        Task.due_date < datetime.datetime.now(), Task.status != 'Completed'
+    ).all()
+
+    for task in overdue_tasks:
+        if task.user and task.user.email:
+            msg = Message(
+                subject="Task Overdue Notification",
+                recipients=[task.user.email],
+                body=f"The task '{task.name}' assigned to you is overdue. Please take necessary action."
+            )
+            mail.send(msg)
 
 # Routes
 @app.route('/')
@@ -119,6 +150,12 @@ def edit_task(task_id):
         task.name = request.form.get('task_name')
         task.due_date = datetime.datetime.strptime(request.form.get('due_date'), '%Y-%m-%d') if request.form.get('due_date') else None
         task.priority = request.form.get('priority', 'Medium')
+
+        # Update email of the assigned user
+        new_email = request.form.get('email')
+        if task.user and new_email:
+            task.user.email = new_email
+            
         db.session.commit()
         flash('Task updated successfully!', 'success')
         return redirect(url_for('dashboard'))
@@ -206,6 +243,7 @@ def reports():
 def register():
     if request.method == 'POST':
         username = request.form.get('username')
+        email = request.form.get('email')
         password = request.form.get('password')
         role = request.form.get('role', 'viewer')
 
@@ -213,7 +251,7 @@ def register():
             flash('Username already exists.', 'danger')
             return redirect(url_for('register'))
 
-        new_user = User(username=username, role=role)
+        new_user = User(username=username, email=email, role=role)
         new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()

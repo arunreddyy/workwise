@@ -29,6 +29,7 @@
                     <th>Due Date</th>
                     <th>Priority</th>
                     <th>Assigned To</th>
+                    <th>Email</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -41,6 +42,13 @@
                     <td>{{ task.due_date.strftime('%Y-%m-%d') if task.due_date else 'N/A' }}</td>
                     <td>{{ task.priority }}</td>
                     <td>{{ task.user.username if task.user else 'Unassigned' }}</td>
+                    <td>
+                        {% if task.user and task.user.email %}
+                            <a href="mailto:{{ task.user.email }}">{{ task.user.email }}</a>
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
                     <td>
                         <form action="{{ url_for('update_status', task_id=task.id) }}" method="post" style="display:inline;">
                             <button class="btn btn-sm btn-primary">Toggle Status</button>
