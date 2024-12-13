@@ -129,13 +129,23 @@ def edit_task(task_id):
 @login_required
 def update_status(task_id):
     task = Task.query.get_or_404(task_id)
-    if current_user.role not in ['admin', 'dev'] or (task.assigned_to != current_user.id and current_user.role != 'admin'):
+
+    # Check permissions
+    if current_user.role == 'viewer':
+        # Viewers can only toggle status of tasks assigned to them
+        if task.assigned_to != current_user.id:
+            flash('Permission denied. You can only modify tasks assigned to you.', 'danger')
+            return redirect(url_for('dashboard'))
+    elif current_user.role not in ['admin', 'dev']:
+        # Non-admin and non-dev users cannot modify tasks
         flash('Permission denied.', 'danger')
         return redirect(url_for('dashboard'))
 
+    # Toggle the task status
     task.status = 'Completed' if task.status == 'Pending' else 'Pending'
     db.session.commit()
-    flash('Task status updated successfully!', 'success')
+    flash(f"Task status updated to '{task.status}' successfully!", 'success')
+
     return redirect(url_for('dashboard'))
 
 @app.route('/delete/<int:task_id>', methods=['POST'])
