@@ -1,9 +1,17 @@
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend
+
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from flask_migrate import Migrate  # Import Flask-Migrate
 import os
+import datetime
+import pandas as pd
+import matplotlib.pyplot as plt
+import io
+import base64
 
 app = Flask(__name__)
 
@@ -16,6 +24,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize extensions
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)  # Initialize Flask-Migrate
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
@@ -51,16 +60,16 @@ def load_user(user_id):
 @login_required
 def dashboard():
     filter_status = request.args.get('filter', 'All')
+
     tasks_query = Task.query
 
     if current_user.role in ['admin', 'dev']:
         if filter_status != 'All':
             tasks_query = tasks_query.filter_by(status=filter_status)
     else:
+        tasks_query = tasks_query.filter_by(assigned_to=current_user.id)
         if filter_status != 'All':
-            tasks_query = tasks_query.filter_by(status=filter_status, assigned_to=current_user.id)
-        else:
-            tasks_query = tasks_query.filter_by(assigned_to=current_user.id)
+            tasks_query = tasks_query.filter_by(status=filter_status)
 
     tasks = tasks_query.order_by(Task.due_date.asc(), Task.priority.desc()).all()
     users = User.query.all() if current_user.role in ['admin', 'dev'] else []
@@ -76,16 +85,19 @@ def add_task():
 
     task_name = request.form.get('task_name')
     assigned_to = request.form.get('assigned_to')
-    due_date = request.form.get('due_date')  # From form input
+    due_date = request.form.get('due_date')
     priority = request.form.get('priority', 'Medium')
 
-    # Convert due_date to datetime object
-    due_date = datetime.strptime(due_date, '%Y-%m-%d') if due_date else None
+    try:
+        due_date = datetime.datetime.strptime(due_date, '%Y-%m-%d') if due_date else None
+    except ValueError:
+        flash('Invalid date format. Use YYYY-MM-DD.', 'danger')
+        return redirect(url_for('dashboard'))
 
     if task_name:
         new_task = Task(
             name=task_name,
-            assigned_to=int(assigned_to) if assigned_to else current_user.id,
+            assigned_to=assigned_to if current_user.role == 'admin' else current_user.id,
             due_date=due_date,
             priority=priority
         )
@@ -105,7 +117,7 @@ def edit_task(task_id):
 
     if request.method == 'POST':
         task.name = request.form.get('task_name')
-        task.due_date = datetime.strptime(request.form.get('due_date'), '%Y-%m-%d') if request.form.get('due_date') else None
+        task.due_date = datetime.datetime.strptime(request.form.get('due_date'), '%Y-%m-%d') if request.form.get('due_date') else None
         task.priority = request.form.get('priority', 'Medium')
         db.session.commit()
         flash('Task updated successfully!', 'success')
@@ -117,7 +129,7 @@ def edit_task(task_id):
 @login_required
 def update_status(task_id):
     task = Task.query.get_or_404(task_id)
-    if current_user.role not in ['admin', 'dev'] and task.assigned_to != current_user.id:
+    if current_user.role not in ['admin', 'dev'] or (task.assigned_to != current_user.id and current_user.role != 'admin'):
         flash('Permission denied.', 'danger')
         return redirect(url_for('dashboard'))
 
@@ -138,6 +150,47 @@ def delete_task(task_id):
     db.session.commit()
     flash('Task deleted successfully!', 'success')
     return redirect(url_for('dashboard'))
+
+@app.route('/reports')
+@login_required
+def reports():
+    if current_user.role != 'admin':
+        flash('Permission denied.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    tasks = Task.query.all()
+    df = pd.DataFrame([{
+        'Task Name': task.name,
+        'Status': task.status,
+        'Assigned To': task.user.username if task.user else 'Unassigned',
+        'Due Date': task.due_date,
+        'Priority': task.priority
+    } for task in tasks])
+
+    # Count tasks by status
+    status_counts = df['Status'].value_counts()
+
+    # Plot task status counts
+    plt.figure(figsize=(6, 4))
+    status_counts.plot(kind='bar', color=['green', 'orange'])
+    plt.title('Tasks by Status')
+    plt.xlabel('Status')
+    plt.ylabel('Count')
+    plt.tight_layout()
+
+    img = io.BytesIO()
+    plt.savefig(img, format='png')
+    img.seek(0)
+    chart_base64 = base64.b64encode(img.getvalue()).decode()
+    plt.close()
+
+    return render_template(
+        'reports.html',
+        task_count=len(tasks),
+        completed_tasks=status_counts.get('Completed', 0),
+        pending_tasks=status_counts.get('Pending', 0),
+        chart_base64=chart_base64
+    )
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
