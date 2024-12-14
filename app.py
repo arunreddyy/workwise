@@ -1,7 +1,7 @@
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend
 
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, Response
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_migrate import Migrate
@@ -25,12 +25,12 @@ app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(basedir, 'inst
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Email Configuration
-app.config['MAIL_SERVER'] = 'smtp.office365.com'  # Outlook SMTP server
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'ayunotesting@outlook.com'
-app.config['MAIL_PASSWORD'] = 'Password@12345'
-app.config['MAIL_DEFAULT_SENDER'] = 'ayunotesting@outlook.com'
+app.config['MAIL_USERNAME'] = 'ayunotesting@gmail.com'
+app.config['MAIL_PASSWORD'] = 'kvxf sgrt ddze jhtl'
+app.config['MAIL_DEFAULT_SENDER'] = 'ayunotesting@gmail.com'
 
 # Initialize extensions
 db = SQLAlchemy(app)
@@ -150,12 +150,6 @@ def edit_task(task_id):
         task.name = request.form.get('task_name')
         task.due_date = datetime.datetime.strptime(request.form.get('due_date'), '%Y-%m-%d') if request.form.get('due_date') else None
         task.priority = request.form.get('priority', 'Medium')
-
-        # Update email of the assigned user
-        new_email = request.form.get('email')
-        if task.user and new_email:
-            task.user.email = new_email
-            
         db.session.commit()
         flash('Task updated successfully!', 'success')
         return redirect(url_for('dashboard'))
@@ -167,18 +161,14 @@ def edit_task(task_id):
 def update_status(task_id):
     task = Task.query.get_or_404(task_id)
 
-    # Check permissions
     if current_user.role == 'viewer':
-        # Viewers can only toggle status of tasks assigned to them
         if task.assigned_to != current_user.id:
             flash('Permission denied. You can only modify tasks assigned to you.', 'danger')
             return redirect(url_for('dashboard'))
     elif current_user.role not in ['admin', 'dev']:
-        # Non-admin and non-dev users cannot modify tasks
         flash('Permission denied.', 'danger')
         return redirect(url_for('dashboard'))
 
-    # Toggle the task status
     task.status = 'Completed' if task.status == 'Pending' else 'Pending'
     db.session.commit()
     flash(f"Task status updated to '{task.status}' successfully!", 'success')
@@ -201,11 +191,11 @@ def delete_task(task_id):
 @app.route('/reports')
 @login_required
 def reports():
-    if current_user.role != 'admin':
-        flash('Permission denied.', 'danger')
-        return redirect(url_for('dashboard'))
-
-    tasks = Task.query.all()
+    # Filter tasks based on the user's role
+    if current_user.role == 'viewer':
+        tasks = Task.query.filter_by(assigned_to=current_user.id).all()
+    else:
+        tasks = Task.query.all()
     df = pd.DataFrame([{
         'Task Name': task.name,
         'Status': task.status,
@@ -214,10 +204,8 @@ def reports():
         'Priority': task.priority
     } for task in tasks])
 
-    # Count tasks by status
     status_counts = df['Status'].value_counts()
 
-    # Plot task status counts
     plt.figure(figsize=(6, 4))
     status_counts.plot(kind='bar', color=['green', 'orange'])
     plt.title('Tasks by Status')
@@ -238,6 +226,50 @@ def reports():
         pending_tasks=status_counts.get('Pending', 0),
         chart_base64=chart_base64
     )
+
+@app.route('/download_report')
+@login_required
+def download_report():
+    tasks = Task.query.all()
+    report_data = [
+        {
+            "Task Name": task.name,
+            "Status": task.status,
+            "Assigned To": task.user.username if task.user else "Unassigned",
+            "Due Date": task.due_date.strftime('%Y-%m-%d') if task.due_date else "N/A",
+            "Priority": task.priority,
+        }
+        for task in tasks
+    ]
+
+    df = pd.DataFrame(report_data)
+
+    output = io.StringIO()
+    df.to_csv(output, index=False)
+    output.seek(0)
+
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment;filename=tasks_report.csv"},
+    )
+
+@app.route('/send_test_email')
+@login_required
+def send_test_email():
+    if current_user.role != 'admin':
+        flash('Permission denied.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    msg = Message(
+        "Test Email from Workwise",
+        sender=app.config['MAIL_USERNAME'],
+        recipients=["arunreddy011@gmail.com"],
+    )
+    msg.body = "This is a test email sent from your Flask application."
+    mail.send(msg)
+    flash('Test email sent successfully!', 'success')
+    return redirect(url_for('dashboard'))
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
