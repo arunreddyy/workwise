@@ -1,49 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
     <title>Edit Task</title>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body>
-    <div class="container mt-5">
-        <h2>Edit Task</h2>
-        <form action="{{ url_for('edit_task', task_id=task.id) }}" method="POST">
-            <!-- Task Name -->
-            <div class="form-group">
-                <label for="task_name">Task Name</label>
-                <input type="text" name="task_name" id="task_name" class="form-control" value="{{ task.name }}" required>
-            </div>
-
-            <!-- Due Date -->
-            <div class="form-group">
-                <label for="due_date">Due Date</label>
-                <input type="date" name="due_date" id="due_date" class="form-control" value="{{ task.due_date.strftime('%Y-%m-%d') if task.due_date else '' }}">
-            </div>
-
-            <!-- Priority -->
-            <div class="form-group">
-                <label for="priority">Priority</label>
-                <select name="priority" id="priority" class="form-control">
-                    <option value="High" {% if task.priority == 'High' %}selected{% endif %}>High</option>
-                    <option value="Medium" {% if task.priority == 'Medium' %}selected{% endif %}>Medium</option>
-                    <option value="Low" {% if task.priority == 'Low' %}selected{% endif %}>Low</option>
-                </select>
-            </div>
-
-            <!-- Email Block -->
-            {% if task.user %}
-            <div class="form-group">
-                <label for="email">Assigned User Email</label>
-                <input type="email" name="email" id="email" class="form-control" value="{{ task.user.email }}" required>
-            </div>
-            {% endif %}
-
-            <!-- Submit and Cancel Buttons -->
-            <button type="submit" class="btn btn-primary">Update Task</button>
-            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
-        </form>
-    </div>
-</body>
+    <link
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <script>
+      function goToDashboard() {
+        window.location.href = "{{ url_for('dashboard') }}";
+      }
+    </script>
+  </head>
+  <body>
+    <h1>Edit Task</h1>
+    <form
+      action="{{ url_for('edit_task', task_id=task.task_id) }}"
+      method="POST"
+    >
+      <label for="task_name">Task Name:</label>
+      <input
+        type="text"
+        id="task_name"
+        name="task_name"
+        value="{{ task.title }}"
+        required
+      />
+      <label for="priority">Priority:</label>
+      <input
+        type="text"
+        id="priority"
+        name="priority"
+        value="{{ task.priority }}"
+        required
+      />
+      <button type="submit">Save</button>
+      <a href="{{ url_for('list_tasks') }}">Cancel</a>
+    </form>
+  </body>
 </html>
