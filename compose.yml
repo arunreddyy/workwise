@@ -14,8 +14,7 @@ services:
     ports:
       - 5000:5000
     volumes:
-      - ./instance:/app/instance:rw
-    entrypoint: ["/bin/bash", "/app/entrypoint.sh", "python3", "app.py"]
+      - ./instance:/app/instance
 
 
 # The commented out section below is an example of how to define a PostgreSQL

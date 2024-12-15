@@ -14,6 +14,12 @@
 </head>
 
 <body>
+  <div class="bg-primary text-white py-3">
+    <div class="container d-flex justify-content-between align-items-center">
+        <h1 class="mb-0" style="font-size: 2rem; font-weight: bold;">Workwise</h1>
+        <a href="{{ url_for('logout') }}" class="btn btn-secondary btn-sm font-weight-bold">Logout</a>
+    </div>
+  </div>
   <div class="container mt-5">
     
     {% if task %}
@@ -130,7 +136,6 @@
     </form>
     {% else %}
     <h1>Create Task</h1>
-    <a href="{{ url_for('logout') }}" class="btn btn-secondary float-right">Logout</a>
     {% if current_user.role == 'admin' %}
     <a href="{{ url_for('user_page')}}" class="btn btn-info float-right mr-2">Create User</a>
     <a href="{{ url_for('list_users')}}" class="btn btn-info float-right mr-2">List Users</a>
