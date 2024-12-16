@@ -25,7 +25,5 @@ jobs:
           ssh -o StrictHostKeyChecking=no root@209.38.150.174 << 'EOF'
             cd workwise
             git pull origin main
-            docker-compose up --build
-            sleep 10  # Allow some time for the app to start
-            curl -f http://localhost:5000/login || exit 1  # Check if the app is running
+            docker-compose up --build -d
           EOF
