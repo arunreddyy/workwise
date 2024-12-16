@@ -29,7 +29,7 @@ This is a comprehensive productivity app designed to help users efficiently trac
 
 ### **Database**
 - **SQLite**: Lightweight relational database for storing tasks and user data.
-- **SQLAlchemy**: ORM for seamless database interaction.
+- **SQLAlchemy**: ORM for seamless database interaction, provides protection against SQL injection
 
 ### **Frontend Libraries/Technologies**
 - **Bootstrap**: For responsive, mobile-first web design.
