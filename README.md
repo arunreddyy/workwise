@@ -160,3 +160,4 @@ Ensure you have Python 3.x and Docker installed on your system.
 - **build and start the containers**
 
     docker compose up --build
+
