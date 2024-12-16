@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import datetime
 from datetime import datetime
 import os
+import re
 from flask_migrate import Migrate  # Import Flask-Migrate
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
@@ -88,30 +89,21 @@ app.config['MAIL_USERNAME'] = 'ayunotesting@gmail.com'
 app.config['MAIL_PASSWORD'] = 'kvxf sgrt ddze jhtl'
 app.config['MAIL_DEFAULT_SENDER'] = 'ayunotesting@gmail.com'
 
-SMTP_SERVER = 'smtp.gmail.com'
-SMTP_PORT = 587
-EMAIL_ADDRESS = 'ayunotesting@gmail.com'
-EMAIL_PASSWORD = 'your_password'
-
 
 def send_email(to_email, subject, body):
+    """Send email using Gmail SMTP."""
     try:
-
         message = MIMEMultipart()
-        message['From'] = EMAIL_ADDRESS
+        message['From'] = app.config['MAIL_USERNAME']
         message['To'] = to_email
         message['Subject'] = subject
 
         message.attach(MIMEText(body, 'plain'))
 
-        try:
-            # with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            #     server.starttls()
-            #     server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-            #     server.send_message(message)
-            print("Sending Email!!!")
-        except:
-            pass
+        with smtplib.SMTP(app.config['MAIL_SERVER'], app.config['MAIL_PORT']) as server:
+            server.starttls()  # Secure connection with TLS
+            server.login(app.config['MAIL_USERNAME'], app.config['MAIL_PASSWORD'])
+            server.send_message(message)  # Send the message
 
         print("Email sent successfully!")
     except Exception as e:
@@ -492,40 +484,42 @@ def register():
     return render_template('register.html')
 
 
+import re
+from flask import request, flash, redirect, url_for
+
 @app.route('/create_user', methods=['GET', 'POST'])
 def create_user():
     if request.method == 'POST':
-        print(request.form)
-        user_id = request.form.get('userid')
         username = request.form.get('username')
         password = request.form.get('password')
         email_id = request.form.get('email_id')
         mobile_number = request.form.get('mobile_number')
-        created_date = datetime.now().date()
         role = request.form.get('role', 'viewer')
 
-        if User.query.filter_by(name=username).first() and not user_id:
-            flash('Username already exists.', 'danger')
-            return redirect(url_for('user_page'))
+        # Validate username: should contain only alphanumeric characters and be 3-50 characters long
+        if not re.match(r'^[a-zA-Z0-9]{3,50}$', username):
+            flash('Username must be alphanumeric and between 3 to 50 characters.', 'danger')
+            return redirect(url_for('create_user'))
 
-        if user_id:
-            user = User.query.filter_by(id=user_id).all()[0]
-            user.name = username
-            user.email_id = email_id
-            user.mobile_number = mobile_number
-            user.role = role
-            db.session.commit()
-            return redirect(url_for('list_users'))
+        # Check if the username already exists
+        if User.query.filter_by(name=username).first():
+            flash('Username already exists.', 'danger')
+            return redirect(url_for('create_user'))
+
+        # Check if the email format is valid
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email_id):
+            flash('Please enter a valid email address.', 'danger')
+            return redirect(url_for('create_user'))
 
         new_user = User(name=username, role=role, email_id=email_id,
-                        mobile_number=mobile_number, created_date=created_date)
+                        mobile_number=mobile_number)
         new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()
-        flash('Registration successful!', 'success')
+        flash('User created successfully!', 'success')
         return redirect(url_for('list_users'))
 
-    return render_template('user_page.html')
+    return render_template('create_user.html')
 
 
 @app.route("/export_tasks", methods=['POST'])
