@@ -73,7 +73,7 @@ Ensure you have Python 3.x and Docker installed on your system.
 
 ### Project Structure
 
-    workwise/                           # Root project directory
+ workwise/                           # Root project directory
 │
 ├── instance/                        # Stores instance-related files (e.g., database)
 │   └── tasks_new.db                 # SQLite database file
@@ -86,6 +86,7 @@ Ensure you have Python 3.x and Docker installed on your system.
 │   └── versions/                    # Folder containing individual migration versions
 │
 ├── static/                          # Static files like CSS, JS, and images
+│   └── styles.css                   # Styles for the frontend UI
 │
 ├── templates/                       # HTML templates for the application
 │   ├── admin_dashboard.html         # Admin dashboard template
@@ -107,7 +108,11 @@ Ensure you have Python 3.x and Docker installed on your system.
 ├── compose.yml                      # Docker Compose configuration
 ├── Dockerfile                       # Dockerfile for the application
 ├── README.md                        # Project documentation
-└── requirements.txt                 # Python dependencies
+├── requirements.txt                 # Python dependencies
+└── .github/
+    └── workflows/
+        └── deploy.yml               # GitHub Actions workflow for deployment
+
 
 ### Directory Descriptions:
 
@@ -115,7 +120,7 @@ Ensure you have Python 3.x and Docker installed on your system.
 
 - migrations/: Contains scripts for database migrations, created by Flask-Migrate.
 
-- static/: Holds static assets like CSS, JS, and images.
+- static/: Holds static assets like CSS, used for styling the frontend elements of the application
 
 - templates/: Contains all HTML templates used for rendering pages.
 
@@ -133,6 +138,7 @@ Ensure you have Python 3.x and Docker installed on your system.
 
 - requirements.txt: A list of required Python packages for the application.
 
+- workflow/deploy.yml Github Actions workflow for deployment
 
 ### Running the Application
 

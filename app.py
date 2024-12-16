@@ -386,21 +386,24 @@ def update_status(task_id):
         task.progress_percentage = '100%'
     else:
         task.completion_date = None
-        # pass
     db.session.commit()
 
-    status = task.status
-    recipient_email = 'test_email@gmail.com'
+    # Check if the task has an assigned user
+    if task.assigned_to:
+        assigned_user = User.query.filter_by(id=task.assigned_to).first()
+        if assigned_user and assigned_user.email_id:
+            recipient_email = assigned_user.email_id  # Email the task owner
+            subject = f"Task Status Update: {task.title} is now {task.status}"
+            body = f"Hello {assigned_user.name},\n\nYour task '{task.title}' has been updated to '{task.status}'.\n\nBest regards,\nYour Flask App"
+            send_email(recipient_email, subject, body)  # Send email
+        else:
+            print(f"No valid email for assigned user {task.assigned_to}.")
+    else:
+        print(f"Task '{task.title}' has no assigned user.")
 
-    # Compose the email
-    subject = f"Task Status Update: {status}"
-    body = f"Hello,\n\nThe task status has been updated to: {status}.\n\nBest regards,\nYour Flask App"
-
-    send_email(recipient_email, subject, body)
     flash(f"Task status updated to '{task.status}' successfully!", 'success')
-    if current_user.role not in ['admin']:
-        return redirect(url_for('dashboard'))
     return redirect(url_for('list_tasks'))
+
 
 
 @app.route('/delete/<int:task_id>', methods=['POST'])
