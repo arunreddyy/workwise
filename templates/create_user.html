@@ -23,7 +23,10 @@
   <div class="bg-primary text-white py-3">
     <div class="container d-flex justify-content-between align-items-center">
       <h1 class="mb-0" style="font-size: 2rem; font-weight: bold;">Workwise</h1>
-      <a href="{{ url_for('logout') }}" class="btn btn-secondary btn-sm font-weight-bold">Logout</a>
+      <div class="d-flex align-items-center">
+        <span class="mr-3">{{ current_user.name }}</span>
+        <a href="{{ url_for('logout') }}" class="btn btn-secondary btn-sm font-weight-bold">Logout</a>
+      </div>
     </div>
   </div>
 
@@ -35,11 +38,21 @@
       <div class="form-group">
         <input type="text" name="userid" class="form-control" value="{{ user.id }}" style="display: none" required />
         <label for="username">Username:</label>
-        <input type="text" name="username" class="form-control" value="{{ user.name }}" required />
+        <input type="text" name="username" class="form-control" value="{{ user.name }}" required
+          pattern="^[A-Za-z]+(?:[ _-][A-Za-z]+)*$" title="Username should only contain letters, spaces, underscores, and hyphens" />
       </div>
       <div class="form-group">
         <label for="email_id">Email ID:</label>
-        <input type="email_id" name="email_id" class="form-control" value="{{ user.email_id }}" required />
+        <input
+          type="email"
+          name="email_id"
+          class="form-control"
+          value="{{ user.email_id }}"
+          required
+          placeholder="user@example.com"
+          pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+          title="Please enter a valid email address (e.g., user@example.com)"
+        />
       </div>
       <div class="form-group">
         <label for="mobile_number">Mobile Number:</label>
@@ -73,19 +86,30 @@
     <form method="POST" action="{{ url_for('create_user') }}" class="mt-4">
       <div class="form-group">
         <label for="username">Username:</label>
-        <input type="text" name="username" class="form-control" required />
+        <input type="text" name="username" class="form-control" required 
+               pattern="^[a-zA-Z0-9]{3,50}$" 
+               title="Username must be alphanumeric and between 3 to 50 characters." />
       </div>
+    
       <div class="form-group">
         <label for="password">Password:</label>
         <input type="password" name="password" class="form-control" required />
       </div>
       <div class="form-group">
         <label for="email_id">Email ID:</label>
-        <input type="email_id" name="email_id" class="form-control" required />
+        <input
+          type="email"
+          name="email_id"
+          class="form-control"
+          required
+          placeholder="user@example.com"
+          pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+          title="Please enter a valid email address (e.g., user@example.com)"
+        />
       </div>
       <div class="form-group">
         <label for="mobile_number">Mobile Number:</label>
-        <input type="text" name="mobile_number" class="form-control" required id="mobile_number" />
+        <input type="text" name="mobile_number" class="form-control" required id="mobile_number" placeholder="123-456-7890" />
       </div>
       <div class="form-group">
         <label for="role">Role:</label>
